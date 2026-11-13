@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Webinar Waiting Screen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@500;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@600;700&display=swap">
+<style>
+  /* Layout: one full screen to present in Meet; title block left, big clock right, rotating "while you wait" strip at the bottom */
+  :root {
+    --navy: #12233D; --navy2: #1B3256; --ink: #F4F6FA; --muted: #A9B4C8;
+    --orange: #F28C28; --teal: #2BB5B5; --line: #2A4268;
+    --f-display: "Sora", "Segoe UI", system-ui, sans-serif;
+    --f-body: "Inter", "Segoe UI", system-ui, sans-serif;
+    --f-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+    color-scheme: dark;
+  }
+  html, body { min-height: 100%; }
+  [hidden] { display: none !important; }
+  body { margin: 0; background: var(--navy); color: var(--ink); font-family: var(--f-body); }
+  body:has(#ctl:not([hidden])) { overflow: auto; }
+  .screen { min-height: 100vh; min-height: 100dvh; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; gap: 2.6vh;
+    padding-block: 6vh 7vh; padding-left: max(16px, 5vw, env(safe-area-inset-left, 0px)); padding-right: max(16px, 5vw, env(safe-area-inset-right, 0px));
+    background: radial-gradient(ellipse at 85% 40%, var(--navy2) 0%, var(--navy) 60%); }
+  .top { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .live { display: inline-flex; align-items: center; gap: 10px; font: 600 clamp(12px, 1.3vw, 16px)/1 var(--f-body); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--orange); animation: pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .3; } }
+  .when { font: 500 clamp(13px, 1.4vw, 18px)/1.2 var(--f-body); color: var(--muted); }
+  .when b { color: var(--ink); font-weight: 600; }
+
+  .main { display: grid; grid-template-columns: 1.15fr 1fr; gap: 5vw; align-items: center; min-height: 0; }
+  .kicker { font: 700 clamp(12px, 1.3vw, 17px)/1 var(--f-body); letter-spacing: .16em; text-transform: uppercase; color: var(--orange); }
+  h1 { margin: 1.2vh 0 1vh; font: 800 clamp(24px, min(3.9vw, 6.2vh), 58px)/1.08 var(--f-display); text-wrap: balance; letter-spacing: -.01em; }
+  h1 span { color: var(--orange); }
+  .sub { font: 500 clamp(15px, min(1.7vw, 3.2vh), 24px)/1.35 var(--f-body); color: var(--ink); margin: 0; }
+  .sub em { font-style: normal; color: var(--teal); font-weight: 600; }
+  .speaker { margin-top: 2.4vh; padding-top: 1.8vh; border-top: 1px solid var(--line); font-size: clamp(13px, 1.35vw, 18px); color: var(--muted); line-height: 1.5; }
+  .speaker b { color: var(--ink); font-weight: 600; }
+
+  .clock { text-align: center; }
+  .clock .lab { font: 600 clamp(12px, 1.3vw, 17px)/1 var(--f-body); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+  .digits { font: 700 clamp(48px, min(9.5vw, 15vh), 140px)/1 var(--f-mono); font-variant-numeric: tabular-nums; margin: 2vh 0 1.5vh; letter-spacing: -.02em; }
+  .digits .sep { color: var(--orange); }
+  .ring { width: min(100%, 420px); height: 8px; background: var(--line); border-radius: 99px; margin: 0 auto; overflow: hidden; }
+  .ring i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--teal), var(--orange)); border-radius: 99px; transition: width 1s linear; }
+  .starts { margin-top: 1.8vh; font-size: clamp(14px, 1.5vw, 20px); color: var(--muted); }
+  .starts b { color: var(--ink); }
+  .starts .ext { display: block; color: var(--orange); font-weight: 600; margin-bottom: .4em; }
+  .ctl .timebox { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; background: var(--navy2); border: 1px solid var(--line); border-radius: 16px; padding: 18px; }
+  .ctl .timebox .now { flex: 1 1 220px; min-width: 0; }
+  .ctl .timebox .now b { display: block; font: 800 28px/1.1 var(--f-display); color: var(--orange); margin-top: 6px; font-variant-numeric: tabular-nums; }
+  .clock.go .digits { color: var(--orange); font-family: var(--f-display); font-size: clamp(36px, min(6vw, 11vh), 96px); }
+
+  .chat { display: flex; align-items: center; gap: 2vw; flex-wrap: wrap; background: var(--navy2); border: 1px solid var(--line); border-radius: 16px; padding: 1.8vh 2.4vw; }
+  .chat .q { font: 700 clamp(16px, 2vw, 28px)/1.25 var(--f-display); flex: 1 1 420px; min-width: 0; }
+  .chat .q span { color: var(--orange); }
+  .tip { flex: 1 1 360px; min-width: 0; font-size: clamp(13px, 1.4vw, 19px); color: var(--muted); line-height: 1.4; border-left: 3px solid var(--teal); padding-left: 1.4vw; min-height: 2.8em; transition: opacity .5s; }
+  .tip b { color: var(--ink); font-weight: 600; }
+  .tip .t { display: block; font: 600 .75em/1 var(--f-body); letter-spacing: .14em; text-transform: uppercase; color: var(--teal); margin-bottom: .5em; }
+  .fs { position: fixed; right: max(12px, env(safe-area-inset-right, 0px)); bottom: max(12px, env(safe-area-inset-bottom, 0px)); background: transparent; color: var(--muted); border: 1px solid var(--line); border-radius: 8px; font: 500 12px var(--f-body); padding: 6px 10px; cursor: pointer; opacity: .5; }
+  .fs:hover, .fs:focus-visible { opacity: 1; outline: 2px solid var(--orange); }
+  :fullscreen .fs { opacity: .25; }
+
+  /* welcome wall */
+  .wall { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; min-height: 44px; }
+  .wall .wl { font: 600 clamp(12px, 1.2vw, 15px)/1 var(--f-body); letter-spacing: .14em; text-transform: uppercase; color: var(--teal); margin-right: 6px; }
+  .wall .empty { color: var(--muted); font-size: clamp(13px, 1.3vw, 17px); }
+  .chip { display: inline-flex; align-items: baseline; gap: 8px; background: var(--ink); color: var(--navy); border-radius: 999px; padding: 8px 16px; font: 700 clamp(14px, 1.45vw, 20px)/1.1 var(--f-display); animation: pop .5s ease-out; }
+  .chip small { font: 500 .78em var(--f-body); color: #4A5A78; }
+  @keyframes pop { from { transform: scale(.6); opacity: 0; } }
+  .spot { position: fixed; inset: 0; display: grid; place-items: center; background: #12233DE6; z-index: 5; animation: fade .4s ease-out; }
+  .spot div { text-align: center; padding: 0 16px; }
+  .spot .hi { font: 600 clamp(14px, 1.6vw, 22px)/1 var(--f-body); letter-spacing: .16em; text-transform: uppercase; color: var(--teal); }
+  .spot .nm { font: 800 clamp(40px, min(8vw, 14vh), 120px)/1.05 var(--f-display); margin: 2vh 0 1.5vh; }
+  .spot .meta { font: 500 clamp(16px, 2vw, 28px)/1.3 var(--f-body); color: var(--orange); }
+  @keyframes fade { from { opacity: 0; } }
+
+  /* control screen (#control) */
+  .ctl { max-width: 760px; margin: 0 auto; padding-block: 40px 56px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 22px; }
+  .ctl h2 { font: 800 30px/1.1 var(--f-display); margin: 6px 0 4px; }
+  .ctl .note { color: var(--muted); font-size: 15px; line-height: 1.5; margin: 0; }
+  .ctl .note b { color: var(--ink); }
+  .ctl form { display: grid; grid-template-columns: 1.1fr 1.3fr 1fr; gap: 12px; background: var(--navy2); border: 1px solid var(--line); border-radius: 16px; padding: 18px; }
+  .ctl label { display: grid; gap: 6px; font: 600 12px/1 var(--f-body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); min-width: 0; }
+  .ctl input { background: var(--navy); color: var(--ink); border: 1px solid var(--line); border-radius: 10px; padding: 12px; font: 500 17px var(--f-body); min-width: 0; }
+  .ctl input:focus { outline: 2px solid var(--orange); border-color: transparent; }
+  .ctl .row { grid-column: 1 / -1; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .btn { border: 0; border-radius: 10px; font: 700 15px var(--f-body); padding: 12px 18px; cursor: pointer; }
+  .btn:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+  .btn-o { background: var(--orange); color: var(--navy); }
+  .btn-g { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+  .ctl ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .ctl li { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; background: var(--navy2); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px 10px 16px; }
+  .ctl li .who { flex: 1 1 220px; min-width: 0; }
+  .ctl li .who b { font: 700 17px var(--f-display); }
+  .ctl li .who span { color: var(--muted); font-size: 14px; display: block; margin-top: 2px; }
+  .ctl li .btn { padding: 8px 12px; font-size: 13px; }
+  .ctl .count { font: 600 12px/1 var(--f-body); letter-spacing: .12em; text-transform: uppercase; color: var(--teal); }
+  .ctl .empty2 { color: var(--muted); font-size: 15px; padding: 14px 0; }
+  .ctl a { color: var(--orange); }
+
+  @media (max-width: 760px) {
+    .main { grid-template-columns: 1fr; gap: 4vh; }
+    .ctl form { grid-template-columns: 1fr; }
+  }
+  @media (prefers-reduced-motion: reduce) { .dot { animation: none; } .ring i, .tip { transition: none; } }
+</style>
+</head>
+<body>
+
+
+<div class="screen" id="screen">
+  <div class="top">
+    <div class="live"><span class="dot"></span>Live webinar · Google Meet</div>
+    <div class="when"><b>Saturday, 14 November 2026</b> · 10:00–11:30 AM IST</div>
+  </div>
+
+  <div class="main">
+    <div>
+      <div class="kicker">For school teachers and principals</div>
+      <h1>AI for Teachers: Learn the basics &amp; build your own <span>classroom app</span></h1>
+      <p class="sub">No coding needed. <em>Today you leave with a working app link.</em></p>
+      <div class="speaker"><b>Mr. Dhilip Prabhakaran</b><br>Senior Business Analyst, Wizdom Edge Solutions</div>
+    </div>
+
+    <div class="clock" id="clock" aria-live="polite">
+      <div class="lab" id="lab">We begin in</div>
+      <div class="digits" id="digits">--<span class="sep">:</span>--</div>
+      <div class="ring"><i id="bar"></i></div>
+      <div class="starts" id="starts">Starting at <b>10:00 AM</b> sharp</div>
+    </div>
+  </div>
+
+  <div class="wall" id="wall" aria-live="polite"><span class="wl">Welcome</span><span class="empty" id="empty">Your names will appear here as you join</span></div>
+
+  <div class="chat">
+    <div class="q">Say hello in the chat: <span>your name, school and subject</span></div>
+    <div class="tip" id="tip"></div>
+  </div>
+</div>
+<button class="fs" id="fs" type="button">Full screen</button>
+<div class="spot" id="spot" hidden><div><div class="hi">Welcome</div><div class="nm" id="spotName"></div><div class="meta" id="spotMeta"></div></div></div>
+
+<div class="ctl" id="ctl" hidden>
+  <div>
+    <div class="kicker">Control screen · not shown to participants</div>
+    <h2>Welcome teachers as they join</h2>
+    <p class="note">Keep the <b>waiting screen</b> open in another tab of this same browser and present only that tab in Meet. Names you add here appear on it within a second. <a href="#" id="openScreen">Open the waiting screen</a></p>
+  </div>
+  <div class="timebox">
+    <div class="now"><span class="count">Start time on screen</span><b id="ctlTime">10:00 AM</b></div>
+    <button class="btn btn-g" type="button" data-add="5">+5 min</button>
+    <button class="btn btn-o" type="button" data-add="10">Extend to 10:10</button>
+    <button class="btn btn-g" type="button" id="resetTime">Back to 10:00</button>
+  </div>
+  <p class="note" style="margin-top:-10px">Extending shows “A few more minutes so everyone can join” and the new time on the waiting screen.</p>
+  <form id="addForm" autocomplete="off">
+    <label>Name<input id="fName" required placeholder="Priya"></label>
+    <label>School<input id="fSchool" placeholder="St. Mary's School, Madurai"></label>
+    <label>Subject<input id="fSubject" placeholder="Chemistry"></label>
+    <div class="row">
+      <button class="btn btn-o" type="submit">Add to screen</button>
+      <span class="note">Press Enter to add. The name also shows full screen for 4 seconds.</span>
+    </div>
+  </form>
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+    <span class="count" id="count">0 teachers</span>
+    <button class="btn btn-g" type="button" id="clearAll">Clear all names</button>
+  </div>
+  <ul id="list"></ul>
+</div>
+
+<script>
+(() => {
+  // Target: 14 Nov 2026, 10:00 IST. Open with #test for a 2-minute rehearsal countdown.
+  const TEST = location.hash === '#test';
+  const BASE = TEST ? Date.now() + 120000 : Date.parse('2026-11-14T10:00:00+05:30');
+  const DKEY = 'startDelay';
+  let delay = 0; try { delay = +localStorage.getItem(DKEY) || 0; } catch (e) {}
+  const target = () => BASE + delay * 60000;
+  const clockText = t => new Date(t).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' }).toUpperCase();
+  const WINDOW = 15 * 60 * 1000; // bar fills over the last 15 minutes
+  const $ = id => document.getElementById(id);
+  const pad = n => String(n).padStart(2, '0');
+
+  const tips = [
+    ['Get ready', 'Keep a notebook handy. Note one topic you would like to turn into an app.'],
+    ['Get ready', 'No GitHub account yet? Create a free one at <b>github.com</b>. It takes two minutes.'],
+    ['Think about it', 'Which topic do your students find hardest? That could be <b>your first app</b>.'],
+    ['Good to know', 'Keep your mic muted. Raise your hand ✋ any time you want to speak.'],
+    ['Good to know', 'Use a laptop if you can. A phone works for watching, a laptop for building.']
+  ];
+  let ti = 0;
+  function showTip() {
+    const el = $('tip'); el.style.opacity = 0;
+    setTimeout(() => { el.innerHTML = `<span class="t">${tips[ti][0]}</span>${tips[ti][1]}`; el.style.opacity = 1; ti = (ti + 1) % tips.length; }, 400);
+  }
+  showTip(); setInterval(showTip, 9000);
+
+  function tick() {
+    const left = target() - Date.now();
+    if ($('ctlTime')) $('ctlTime').textContent = clockText(target());
+    if (left <= 0) {
+      $('clock').classList.add('go');
+      $('digits').textContent = 'Starting now'; $('bar').style.width = '100%';
+      $('lab').textContent = `It is ${clockText(target())}`;
+      $('starts').innerHTML = 'Welcome! Please stay muted.';
+      return;
+    }
+    $('clock').classList.remove('go'); $('lab').textContent = 'We begin in';
+    const s = Math.ceil(left / 1000), h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), sec = s % 60;
+    $('digits').innerHTML = (h ? `${h}<span class="sep">:</span>${pad(m)}` : pad(m)) + `<span class="sep">:</span>${pad(sec)}`;
+    $('bar').style.width = Math.max(0, Math.min(100, (1 - left / WINDOW) * 100)) + '%';
+    $('starts').innerHTML = delay > 0
+      ? `<span class="ext">A few more minutes so everyone can join</span>New start time <b>${clockText(target())}</b>`
+      : `Starting at <b>${clockText(target())}</b> sharp`;
+    if (TEST && !delay) $('starts').innerHTML = 'Rehearsal mode: 2-minute countdown';
+  }
+  tick(); setInterval(tick, 1000);
+
+  // Welcome names: entered on the control screen (#control), shown on the waiting screen.
+  // Both are tabs of this page in one browser, so they share storage and sync instantly.
+  const KEY = 'welcomeTeachers';
+  const esc = t => String(t || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const load = () => { try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch (e) { return []; } };
+  let people = load();
+  let bc = null; try { bc = new BroadcastChannel('welcome'); } catch (e) {}
+  function commit(spot) {
+    try { localStorage.setItem(KEY, JSON.stringify(people)); } catch (e) {}
+    try { bc && bc.postMessage({ people, spot }); } catch (e) {}
+    renderAll();
+  }
+  function receive(list, spot) { people = list; renderAll(); if (spot && !ctlMode()) showSpot(spot); }
+  if (bc) bc.onmessage = e => {
+    if ('delay' in e.data) { delay = e.data.delay; tick(); return; }
+    receive(e.data.people || [], e.data.spot);
+  };
+  window.addEventListener('storage', e => {
+    if (e.key === KEY) receive(load(), null);
+    if (e.key === DKEY) { delay = +e.newValue || 0; tick(); }
+  });
+  function setDelay(d) {
+    delay = Math.max(0, Math.min(60, d));
+    try { localStorage.setItem(DKEY, String(delay)); } catch (e) {}
+    try { bc && bc.postMessage({ delay }); } catch (e) {}
+    tick();
+  }
+  document.querySelectorAll('[data-add]').forEach(b => b.addEventListener('click', () => setDelay(b.dataset.add === '10' ? 10 : delay + 5)));
+  $('resetTime').addEventListener('click', () => setDelay(0));
+
+  function renderWall() {
+    const w = $('wall'); w.querySelectorAll('.chip').forEach(c => c.remove());
+    $('empty').hidden = people.length > 0;
+    people.forEach(p => {
+      const c = document.createElement('span'); c.className = 'chip';
+      const meta = [p.subject, p.school].filter(Boolean).join(' · ');
+      c.innerHTML = esc(p.name) + (meta ? ` <small>${esc(meta)}</small>` : '');
+      w.appendChild(c);
+    });
+  }
+  let spotT;
+  function showSpot(p) {
+    $('spotName').textContent = p.name;
+    $('spotMeta').textContent = [p.subject, p.school].filter(Boolean).join(' · ');
+    $('spot').hidden = false; clearTimeout(spotT); spotT = setTimeout(() => { $('spot').hidden = true; }, 4000);
+  }
+  function renderList() {
+    const ul = $('list'); ul.innerHTML = '';
+    $('count').textContent = people.length === 1 ? '1 teacher' : `${people.length} teachers`;
+    if (!people.length) { ul.innerHTML = '<li class="empty2" style="background:none;border:0;padding:0">No names yet. Add the first one above.</li>'; return; }
+    people.forEach((p, i) => {
+      const li = document.createElement('li');
+      li.innerHTML = `<div class="who"><b>${esc(p.name)}</b><span>${esc([p.subject, p.school].filter(Boolean).join(' · ') || 'No details')}</span></div>`;
+      const again = document.createElement('button'); again.className = 'btn btn-g'; again.type = 'button'; again.textContent = 'Show again';
+      again.onclick = () => commit(p);
+      const del = document.createElement('button'); del.className = 'btn btn-g'; del.type = 'button'; del.textContent = 'Remove';
+      del.onclick = () => { people.splice(i, 1); commit(null); };
+      li.append(again, del); ul.appendChild(li);
+    });
+  }
+  function renderAll() { renderWall(); renderList(); }
+
+  $('addForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const p = { name: $('fName').value.trim().slice(0, 40), school: $('fSchool').value.trim().slice(0, 60), subject: $('fSubject').value.trim().slice(0, 40) };
+    if (!p.name) return;
+    people.push(p); commit(p);
+    $('addForm').reset(); $('fName').focus();
+  });
+  let armed = false;
+  $('clearAll').addEventListener('click', () => {
+    if (!armed) { armed = true; $('clearAll').textContent = 'Click again to clear all'; setTimeout(() => { armed = false; $('clearAll').textContent = 'Clear all names'; }, 3000); return; }
+    armed = false; $('clearAll').textContent = 'Clear all names'; people = []; commit(null);
+  });
+
+  // Views: the waiting screen by default, the control screen at #control
+  const ctlMode = () => location.hash === '#control';
+  $('openScreen').href = location.href.split('#')[0];
+  $('openScreen').target = '_blank';
+  function route() {
+    const c = ctlMode();
+    $('ctl').hidden = !c; $('screen').hidden = c; $('fs').hidden = c;
+    document.title = c ? 'Webinar Control Screen' : 'Webinar Waiting Screen';
+    if (c) $('fName').focus();
+  }
+  window.addEventListener('hashchange', route); route(); renderAll();
+
+  $('fs').addEventListener('click', () => { document.documentElement.requestFullscreen?.().catch(() => {}); });
+  try { navigator.wakeLock?.request('screen').catch(() => {}); } catch (e) {}
+})();
+</script>
+
+</body>
+</html>
